@@ -116,3 +116,9 @@ func ProviderStatusFromRawExtension(rawExtension *runtime.RawExtension) (*Virtua
 	klog.V(5).Infof("Got provider Status from raw extension: %+v", providerStatus)
 	return providerStatus, nil
 }
+
+// VirtualMachineInstancePhaseToString returns a pointer to the string value of the VirtualMachineInstancePhase passed.
+func VirtualMachineInstancePhaseToString(src VirtualMachineInstancePhase) *string {
+	value := string(src)
+	return &value
+}
