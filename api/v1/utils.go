@@ -20,11 +20,17 @@
 package v1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
+	"k8s.io/klog"
 	"kubevirt.io/client-go/precond"
+	"sigs.k8s.io/yaml"
 )
 
 // This is meant for testing
@@ -45,4 +51,68 @@ func NewMinimalVMIWithNS(namespace, name string) *VirtualMachineInstance {
 		Kind:       "VirtualMachineInstance",
 	}
 	return vmi
+}
+
+// RawExtensionFromProviderSpec marshals the machine provider spec.
+func RawExtensionFromProviderSpec(spec *VirtualMachineInstanceSpec) (*runtime.RawExtension, error) {
+	if spec == nil {
+		return &runtime.RawExtension{}, nil
+	}
+
+	var rawBytes []byte
+	var err error
+	if rawBytes, err = json.Marshal(spec); err != nil {
+		return nil, fmt.Errorf("error marshalling providerSpec: %v", err)
+	}
+
+	return &runtime.RawExtension{
+		Raw: rawBytes,
+	}, nil
+}
+
+// RawExtensionFromProviderStatus marshals the machine provider status
+func RawExtensionFromProviderStatus(status *VirtualMachineInstanceStatus) (*runtime.RawExtension, error) {
+	if status == nil {
+		return &runtime.RawExtension{}, nil
+	}
+
+	var rawBytes []byte
+	var err error
+	if rawBytes, err = json.Marshal(status); err != nil {
+		return nil, fmt.Errorf("error marshalling providerStatus: %v", err)
+	}
+
+	return &runtime.RawExtension{
+		Raw: rawBytes,
+	}, nil
+}
+
+// ProviderSpecFromRawExtension unmarshals a raw extension into an AWSMachineProviderSpec type
+func ProviderSpecFromRawExtension(rawExtension *runtime.RawExtension) (*VirtualMachineInstanceSpec, error) {
+	if rawExtension == nil {
+		return &VirtualMachineInstanceSpec{}, nil
+	}
+
+	spec := new(VirtualMachineInstanceSpec)
+	if err := yaml.Unmarshal(rawExtension.Raw, &spec); err != nil {
+		return nil, fmt.Errorf("error unmarshalling providerSpec: %v", err)
+	}
+
+	klog.V(5).Infof("Got provider Spec from raw extension: %+v", spec)
+	return spec, nil
+}
+
+// ProviderStatusFromRawExtension unmarshals a raw extension into an AWSMachineProviderStatus type
+func ProviderStatusFromRawExtension(rawExtension *runtime.RawExtension) (*VirtualMachineInstanceStatus, error) {
+	if rawExtension == nil {
+		return &VirtualMachineInstanceStatus{}, nil
+	}
+
+	providerStatus := new(VirtualMachineInstanceStatus)
+	if err := yaml.Unmarshal(rawExtension.Raw, providerStatus); err != nil {
+		return nil, fmt.Errorf("error unmarshalling providerStatus: %v", err)
+	}
+
+	klog.V(5).Infof("Got provider Status from raw extension: %+v", providerStatus)
+	return providerStatus, nil
 }
